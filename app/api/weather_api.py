@@ -1,7 +1,9 @@
 import requests
-import time
-from datetime import datetime
+import numpy as np
+from functools import lru_cache
+from datetime import datetime, date
 
+@lru_cache(maxsize=100)
 def get_coordinates(place_name):
     geocode_url = "https://nominatim.openstreetmap.org/search"
     params = {
@@ -10,85 +12,89 @@ def get_coordinates(place_name):
         "limit": 1
     }
     headers = {
-        "User-Agent": "weather-fetcher-script"
+        "User-Agent": "pravaah-weather-fetcher"
     }
-    response = requests.get(geocode_url, params=params, headers=headers)
-    if response.status_code == 200:
-        results = response.json()
-        if results:
-            lat = float(results[0]["lat"])
-            lon = float(results[0]["lon"])
-            return lat, lon
+    try:
+        response = requests.get(geocode_url, params=params, headers=headers, timeout=5)
+        if response.status_code == 200:
+            results = response.json()
+            if results:
+                lat = float(results[0]["lat"])
+                lon = float(results[0]["lon"])
+                return lat, lon
+            else:
+                raise ValueError(f"No location found for {place_name}.")
         else:
-            raise ValueError("No location found.")
-    else:
-        raise Exception(f"Geocoding request failed: {response.status_code}")
+            raise Exception(f"Geocoding request failed: {response.status_code}")
+    except Exception as e:
+        print(f"Error geocoding {place_name}: {e}")
+        return None, None
 
-def fetch_weather(lat, lon):
+@lru_cache(maxsize=100)
+def fetch_weather(lat, lon, date_str):
     weather_url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "current": "temperature_2m,wind_speed_10m",
-        "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability",
-        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
-        "timezone": "auto"
+        "hourly": "precipitation",
+        "timezone": "auto",
+        "start_date": date_str,
+        "end_date": date_str
     }
-
-    response = requests.get(weather_url, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Weather request failed: {response.status_code}")
-
-def display_weather(data):
-    current = data.get("current", {})
-    print("\n🌡️ Current Weather:")
-    print(f"  Time: {current.get('time')}")
-    print(f"  Temperature: {current.get('temperature_2m')} °C")
-    print(f"  Wind Speed: {current.get('wind_speed_10m')} km/h")
-
-    hourly = data.get("hourly", {})
-    times = hourly.get("time", [])
-    temps = hourly.get("temperature_2m", [])
-    humidity = hourly.get("relative_humidity_2m", [])
-    wind_speed = hourly.get("wind_speed_10m", [])
-    rain_prob = hourly.get("precipitation_probability", [])
-
-    print("\n🔮 Hourly Forecast (Next 5 Hours):")
-    if times:
-        current_time = current.get("time")
-        try:
-            i = times.index(current_time)
-        except ValueError:
-            now = datetime.strptime(current_time, "%Y-%m-%dT%H:%M")
-            i = min(range(len(times)), key=lambda j: abs(datetime.strptime(times[j], "%Y-%m-%dT%H:%M") - now))
-
-        for j in range(i, min(i + 5, len(times))):
-            print(f"{times[j]} | Temp: {temps[j]}°C | Humidity: {humidity[j]}% | Wind: {wind_speed[j]} km/h | Rain: {rain_prob[j]}%")
-
-    # Show 5-day forecast
-    daily = data.get("daily", {})
-    dates = daily.get("time", [])
-    max_temp = daily.get("temperature_2m_max", [])
-    min_temp = daily.get("temperature_2m_min", [])
-    max_rain = daily.get("precipitation_probability_max", [])
-    max_wind = daily.get("wind_speed_10m_max", [])
-
-    print("\n📆 5-Day Forecast:")
-    for i in range(min(5, len(dates))):
-        print(f"{dates[i]} | Max: {max_temp[i]}°C | Min: {min_temp[i]}°C | Rain: {max_rain[i]}% | Wind: {max_wind[i]} km/h")
-
-def main():
-    place = input("Enter a place name (e.g., Berlin, New York): ").strip()
     try:
-        lat, lon = get_coordinates(place)
-        print(f"📍 Coordinates for {place}: Latitude {lat}, Longitude {lon}")
-        time.sleep(1)
-        weather_data = fetch_weather(lat, lon)
-        display_weather(weather_data)
+        response = requests.get(weather_url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            print(f"Weather API response for {lat}, {lon} on {date_str}: {data}")
+            return data
+        else:
+            raise Exception(f"Weather request failed: {response.status_code}")
     except Exception as e:
-        print("❌ Error:", e)
+        print(f"Error fetching weather for {lat}, {lon} on {date_str}: {e}")
+        return None
 
-if __name__ == "__main__":
-    main()
+def get_precipitation_probability(city, dispatch_date=None, dispatch_time=None):
+    try:
+        lat, lon = get_coordinates(city)
+        if lat is None or lon is None:
+            print(f"No coordinates for {city}, returning default 10.0 mm")
+            return 10.0
+
+        # Use current date if dispatch_date is None
+        date_to_use = dispatch_date if dispatch_date else date.today()
+        date_str = date_to_use.strftime("%Y-%m-%d")
+        weather_data = fetch_weather(lat, lon, date_str)
+        if weather_data is None:
+            print(f"No weather data for {city} on {date_str}, returning default 10.0 mm")
+            return 10.0
+
+        hourly = weather_data.get("hourly", {})
+        times = hourly.get("time", [])
+        precipitations = hourly.get("precipitation", [])
+
+        if not times or not precipitations:
+            print(f"No hourly precipitation data for {city} on {date_str}, returning default 10.0 mm")
+            return 10.0
+
+        # If dispatch_time is provided, find the closest hour
+        if dispatch_time:
+            target_time = datetime.combine(date_to_use, dispatch_time)
+            target_str = target_time.strftime("%Y-%m-%dT%H:00")
+            for t, p in zip(times, precipitations):
+                if t == target_str:
+                    print(f"Found exact match for {city} at {target_str}: {p} mm")
+                    return min(max(p, 0.0), 50.0)  # Cap at 50 mm
+            # If no exact match, use closest hour
+            target_hour = target_time.hour
+            closest_idx = min(range(len(times)), key=lambda i: abs(int(times[i][-5:-3]) - target_hour))
+            rainfall_mm = precipitations[closest_idx]
+            print(f"Closest match for {city} at {times[closest_idx]}: {rainfall_mm} mm")
+            return min(max(rainfall_mm, 0.0), 50.0)
+        else:
+            # Use average daily precipitation
+            avg_rain = np.mean([p for p in precipitations if p is not None]) if precipitations else 10.0
+            print(f"Average daily precipitation for {city} on {date_str}: {avg_rain} mm")
+            return min(max(avg_rain, 0.0), 50.0)
+    except Exception as e:
+        print(f"Error processing weather for {city}: {e}")
+        return 10.0
