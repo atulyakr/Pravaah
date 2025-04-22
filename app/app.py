@@ -3,9 +3,23 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import sys
+import importlib.util
 from datetime import datetime, date
-from API.weather_api import get_precipitation_probability
 from dotenv import load_dotenv
+import google.generativeai as genai
+import json
+import re
+import requests
+import streamlit.components.v1 as components
+
+# Dynamically import weather_api
+weather_api_path = os.path.join(os.path.dirname(__file__), "API", "weather_api.py")
+spec = importlib.util.spec_from_file_location("weather_api", weather_api_path)
+weather_api = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(weather_api)
+get_precipitation_probability = weather_api.get_precipitation_probability
+
 import google.generativeai as genai
 import json
 import re
