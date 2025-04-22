@@ -1,1 +1,24 @@
-.env
+ .env
+ *.env
+
+ # Python
+ __pycache__/
+ *.pyc
+ *.pyo
+ *.pyd
+
+ # Streamlit
+ .streamlit/
+
+ # IDEs
+ .vscode/
+ .idea/
+
+ # OS files
+ .DS_Store
+ Thumbs.db
+
+ # Cache and temporary files
+ *.cache
+ *.log
+ route_data_cache.json
