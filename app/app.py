@@ -13,20 +13,19 @@ import streamlit.components.v1 as components
 from functools import lru_cache
 
 
-# Base directory where app.py is located
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Get absolute path to the project root
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# Define model paths
-road_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_road.pkl")
-sea_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_sea.pkl")
-train_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_train.pkl")
+# Paths to models and scalers
+road_model_path = os.path.join(ROOT_DIR, "Model", "lr_model_road.pkl")
+sea_model_path = os.path.join(ROOT_DIR, "Model", "lr_model_sea.pkl")
+train_model_path = os.path.join(ROOT_DIR, "Model", "lr_model_train.pkl")
 
-# Define scaler paths
-road_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_road.pkl")
-sea_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_sea.pkl")
-train_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_train.pkl")
+road_scaler_path = os.path.join(ROOT_DIR, "Model", "scaler_road.pkl")
+sea_scaler_path = os.path.join(ROOT_DIR, "Model", "scaler_sea.pkl")
+train_scaler_path = os.path.join(ROOT_DIR, "Model", "scaler_train.pkl")
 
-# Load models and scalers
+# Load
 road_model = joblib.load(road_model_path)
 sea_model = joblib.load(sea_model_path)
 train_model = joblib.load(train_model_path)
