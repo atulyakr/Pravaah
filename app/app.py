@@ -13,22 +13,27 @@ import streamlit.components.v1 as components
 from functools import lru_cache
 
 
-# Detect the base directory (repository root)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if __file__ else os.getcwd()
-MODEL_DIR = os.path.join(BASE_DIR, "Model")
+# Base directory where app.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Load models
-models = {}
-scalers = {}
-for mode in ['sea', 'road', 'train']:
-    model_path = os.path.join(MODEL_DIR, f"lr_model_{mode}.pkl")
-    scaler_path = os.path.join(MODEL_DIR, f"scaler_{mode}.pkl")
-    try:
-        models[mode] = joblib.load(model_path)
-        scalers[mode] = joblib.load(scaler_path)
-    except FileNotFoundError as e:
-        st.error(f"Model or scaler not found: {e}. Please run yukModel.py first to generate them.")
-        st.stop()
+# Define model paths
+road_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_road.pkl")
+sea_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_sea.pkl")
+train_model_path = os.path.join(BASE_DIR, "..", "Model", "lr_model_train.pkl")
+
+# Define scaler paths
+road_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_road.pkl")
+sea_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_sea.pkl")
+train_scaler_path = os.path.join(BASE_DIR, "..", "Model", "scaler_train.pkl")
+
+# Load models and scalers
+road_model = joblib.load(road_model_path)
+sea_model = joblib.load(sea_model_path)
+train_model = joblib.load(train_model_path)
+
+road_scaler = joblib.load(road_scaler_path)
+sea_scaler = joblib.load(sea_scaler_path)
+train_scaler = joblib.load(train_scaler_path)
 
 
 @lru_cache(maxsize=100)
